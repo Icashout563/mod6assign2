@@ -1,5 +1,5 @@
 from fastapi.testclient import TestClient
-from covid19.main import app
+from main import app
 
 client = TestClient(app)
 
