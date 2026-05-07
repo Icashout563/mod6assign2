@@ -1,62 +1,20 @@
 import pandas as pd
 
-# def load_data():
-#     return pd.DataFrame({"sample": [1, 2, 3]})
-import pytest
-
-import pandas as pd
-
-from data_handler import load_data, summarize_data
-
-
-@pytest.fixture
-def sample_df():
+def load_data():
     return pd.DataFrame({
-
-        'id': [1, 2],
-
-        'name': ['Cozy Apartment', 'Luxury Loft'],
-
-        'price': [100, 300],
-
-        'neighbourhood': ['Downtown', 'Uptown'],
-
-        'room_type': ['Entire home', 'Private room']
-
+        'id': [1, 2, 3],
+        'name': ['Cozy Apartment', 'Luxury Loft', 'Beach House'],
+        'price': [100, 300, 150],
+        'neighbourhood': ['Downtown', 'Uptown', 'Seaside'],
+        'room_type': ['Entire home', 'Private room', 'Entire home']
     })
 
+def summarize_data(df):
+    return df.describe().to_dict()
 
-def test_load_data():
-    df = load_data()
+def filter_by_price(df, min_price, max_price):
+    return df[(df['price'] >= min_price) & (df['price'] <= max_price)]
 
-    assert isinstance(df, pd.DataFrame)
-
-    assert not df.empty
-
-
-def test_summarize_data():
-    df = load_data()
-
-    summary = summarize_data(df)
-
-    assert 'price' in summary
-
-
-def test_filter_price_valid(sample_df):
-    filtered = sample_df[(sample_df['price'] >= 50) & (sample_df['price'] <= 200)]
-
-    assert len(filtered) == 1
-
-
-def test_filter_price_empty(sample_df):
-    filtered = sample_df[(sample_df['price'] >= 400) & (sample_df['price'] <= 500)]
-
-    assert len(filtered) == 0
-
-
-def test_export_json(tmp_path, sample_df):
-    filename = tmp_path / "test.json"
-
-    sample_df.to_json(filename, orient='records')
-
-    assert filename.exists()
+def export_to_json(df, filename):
+    df.to_json(filename, orient='records', indent=2)
+    return filename

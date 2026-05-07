@@ -1,64 +1,19 @@
 import pandas as pd
 
 def load_data():
-    return pd.DataFrame({"cases": [100, 200, 300]})
-
-
-import pytest
-
-import pandas as pd
-
-from data_handler import load_data, summarize_data
-
-
-@pytest.fixture
-def sample_df():
     return pd.DataFrame({
-
-        'id': [1, 2],
-
-        'name': ['Cozy Apartment', 'Luxury Loft'],
-
-        'price': [100, 300],
-
-        'neighbourhood': ['Downtown', 'Uptown'],
-
-        'room_type': ['Entire home', 'Private room']
-
+        'date': ['2023-01-01', '2023-01-08', '2023-01-15'],
+        'country': ['USA', 'USA', 'USA'],
+        'cases': [1000, 1500, 1200],
+        'deaths': [50, 75, 60]
     })
 
+def summarize_data(df):
+    return df.describe().to_dict()
 
-def test_load_data():
-    df = load_data()
+def filter_by_date(df, start_date, end_date):
+    return df[(df['date'] >= start_date) & (df['date'] <= end_date)]
 
-    assert isinstance(df, pd.DataFrame)
-
-    assert not df.empty
-
-
-def test_summarize_data():
-    df = load_data()
-
-    summary = summarize_data(df)
-
-    assert 'price' in summary
-
-
-def test_filter_price_valid(sample_df):
-    filtered = sample_df[(sample_df['price'] >= 50) & (sample_df['price'] <= 200)]
-
-    assert len(filtered) == 1
-
-
-def test_filter_price_empty(sample_df):
-    filtered = sample_df[(sample_df['price'] >= 400) & (sample_df['price'] <= 500)]
-
-    assert len(filtered) == 0
-
-
-def test_export_json(tmp_path, sample_df):
-    filename = tmp_path / "test.json"
-
-    sample_df.to_json(filename, orient='records')
-
-    assert filename.exists()
+def weekly_report(df):
+    df['date'] = pd.to_datetime(df['date'])
+    return df.groupby(pd.Grouper(key='date', freq='W'))['cases'].sum().to_dict()
