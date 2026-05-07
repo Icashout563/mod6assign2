@@ -1,0 +1,167 @@
+on:
+
+  push:
+
+    branches: [main]
+
+jobs:
+
+  test-airbnb:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+
+        uses: actions/setup-python@v4
+
+        with:
+
+          python-version: '3.8'
+
+      - name: Install dependencies
+
+        run: |
+
+          cd airbnb
+
+          pip install -r requirements.txt
+
+      - name: Run Airbnb tests
+
+        run: |
+
+          cd airbnb
+
+          pytest tests/ -v --junitxml=pytest_report.xml
+
+      - name: Upload Airbnb test report to GCS
+
+        env:
+
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GCS_CREDENTIALS }}
+
+        run: |
+
+          pip install google-cloud-storage
+
+          python -c "from google.cloud import storage; client = storage.Client(); bucket = client.get_bucket('test-artifacts-1'); blob = bucket.blob('airbnb_pytest_report.xml'); blob.upload_from_filename('airbnb/pytest_report.xml')"
+
+  test-covid19:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+
+        uses: actions/setup-python@v4
+
+        with:
+
+          python-version: '3.8'
+
+      - name: Install dependencies
+
+        run: |
+
+          cd covid19
+
+          pip install -r requirements.txt
+
+      - name: Run COVID-19 tests
+
+        run: |
+
+          cd covid19
+
+          pytest tests/ -v --junitxml=pytest_report.xml
+
+      - name: Upload COVID-19 test report to GCS
+
+        env:
+
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GCS_CREDENTIALS }}
+
+        run: |
+
+          pip install google-cloud-storage
+
+          python -c "from google.cloud import storage; client = storage.Client(); bucket = client.get_bucket('test-artifacts-1'); blob = bucket.blob('covid19_pytest_report.xml'); blob.upload_from_filename('covid19/pytest_report.xml')"
+
+  deploy:
+
+    needs: [test-airbnb, test-covid19]
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - uses: actions/checkout@v3
+
+      - name: Set up Google Cloud SDK
+
+        uses: google-github-actions/setup-gcloud@v1
+
+        with:
+
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Configure Docker
+
+        run: gcloud auth configure-docker
+
+      - name: Build and Push Airbnb Image
+
+        run: |
+
+          cd airbnb
+
+          docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/airbnb-api:latest .
+
+          docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/airbnb-api:latest
+
+      - name: Deploy Airbnb to Cloud Run
+
+        run: |
+
+          gcloud run deploy airbnb-api \
+
+            --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/airbnb-api:latest \
+
+            --platform managed \
+
+            --region us-central1 \
+
+            --allow-unauthenticated
+
+      - name: Build and Push COVID-19 Image
+
+        run: |
+
+          cd covid19
+
+          docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/covid19-api:latest .
+
+          docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/covid19-api:latest
+
+      - name: Deploy COVID-19 to Cloud Run
+
+        run: |
+
+          gcloud run deploy covid19-api \
+
+            --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/covid19-api:latest \
+
+            --platform managed \
+
+            --region us-central1 \
+
+            --allow-unauthenticated
